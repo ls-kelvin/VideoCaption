@@ -1,0 +1,39 @@
+data:
+  input_jsonl: agibot-alpha.jsonl
+  video_field: path
+  id_field: null
+  output_jsonl: agibot-alpha.describe.jsonl
+  resume: true
+  num_workers: 4
+  shard_id: 0
+
+vision:
+  # total_pixels: 16056320   # 20480*28*28
+  min_pixels: 12544        # 16*28*28
+  fps: 0.66
+
+vllm:
+  model: /root/workspace/zzt/models/Qwen/Qwen3-VL-4B-Instruct
+  dtype: bfloat16
+  max_model_len: 32768
+  gpu_memory_utilization: 0.9
+  enforce_eager: false
+  tensor_parallel_size: 1
+  limit_mm_per_prompt:
+    video: 1
+  trust_remote_code: true
+
+sampling:
+  temperature: 0.2
+  top_p: 0.9
+  max_tokens: 512
+  repetition_penalty: 1.0
+
+run:
+  task: describe
+  batch_size: 8
+  log_every: 20
+  flush_every: 1
+  fsync_every: 5
+
+task_params: {}
