@@ -17,6 +17,7 @@ dependencies = [
   "accelerate>=0.34",
   "qwen-vl-utils",
   "vllm>=0.11.1",
+  "torchcodec"
 ]
 
 [project.optional-dependencies]
@@ -27,7 +28,7 @@ dev = [
 ]
 
 [project.scripts]
-video-pipeline-run = "video_pipeline.cli.run:main"
+video-pipeline-run = "video_pipeline.cli.launch:main"
 
 [tool.setuptools]
 packages = ["video_pipeline"]
