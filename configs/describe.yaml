@@ -10,7 +10,7 @@ data:
 vision:
   # total_pixels: 16056320   # 20480*28*28
   min_pixels: 12544        # 16*28*28
-  fps: 0.66
+  # fps: 0.66
 
 vllm:
   model: /root/workspace/zzt/models/Qwen/Qwen3-VL-4B-Instruct

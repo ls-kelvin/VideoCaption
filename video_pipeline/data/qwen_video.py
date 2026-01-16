@@ -68,6 +68,7 @@ class QwenVideoJsonlDataset(BaseDataset):
         processor = self._get_processor()
         prompt = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
+        print(video_path)
         image_inputs, video_inputs = process_vision_info(messages)
         mm_data: Dict[str, Any] = {}
         if video_inputs is not None:
