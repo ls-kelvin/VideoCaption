@@ -4,7 +4,7 @@ A modular pipeline for:
 - Reading JSONL video samples (`path` field)
 - Building a Torch Dataset that reads video with `qwen_vl_utils.process_vision_info` inside `__getitem__`
 - Running vLLM offline inference (batch)
-- Multi-process GPU inference via `torchrun` (DistributedSampler)
+- Multi-process GPU inference
 - Streaming JSONL output with resume/restart
 
 ## Install
@@ -29,56 +29,11 @@ Input is JSONL. Each line is a JSON object containing a video path:
 
 ### 1) Prepare config (YAML)
 
-Example `configs/describe.yaml`:
-
-```yaml
-data:
-  input_jsonl: /path/to/input.jsonl
-  video_field: path
-  id_field: null
-  output_jsonl: /path/to/output.describe.jsonl
-  resume: true
-  num_workers: 0
-  pin_memory: false
-
-vision:
-  total_pixels: 16056320   # 20480*28*28
-  min_pixels: 12544        # 16*28*28
-  fps: 2
-
-vllm:
-  model: Qwen/Qwen2.5-VL-7B-Instruct
-  dtype: bfloat16
-  max_model_len: 32768
-  gpu_memory_utilization: 0.9
-  enforce_eager: true
-  tensor_parallel_size: 1   # IMPORTANT for torchrun data-parallel
-  limit_mm_per_prompt:
-    video: 1
-  trust_remote_code: true
-
-sampling:
-  temperature: 0.2
-  top_p: 0.9
-  max_tokens: 512
-  repetition_penalty: 1.0
-
-run:
-  task: describe
-  batch_size: 2
-  log_every: 20
-  flush_every: 1
-  fsync_every: 10
-
-task_params:
-  dataset: {}
-```
+Example `configs/describe.yaml`
 
 ### 2) Run
 
-```bash
-python -m video_pipeline.cli.launch --config configs/describe.yaml --gpus 0,1,2,3,4,5,6,7
-```
+Example `run.sh`
 
 Output will be sharded automatically by rank:
 
@@ -193,7 +148,8 @@ A dataset item should return:
   "raw": {... original json object ...},
   "llm_input": {
      "prompt": "...",
-     "multi_modal_data": {...}
+     "multi_modal_data": {...},
+     "mm_processor_kwargs": {...}
   }
 }
 ```
