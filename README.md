@@ -44,6 +44,7 @@ data:
 vision:
   total_pixels: 16056320   # 20480*28*28
   min_pixels: 12544        # 16*28*28
+  fps: 2
 
 vllm:
   model: Qwen/Qwen2.5-VL-7B-Instruct

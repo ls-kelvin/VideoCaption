@@ -16,7 +16,7 @@ dependencies = [
   "transformers>=4.56",
   "accelerate>=0.34",
   "qwen-vl-utils",
-  "vllm>=0.11.1",
+  "vllm==0.11.1",
   "torchcodec"
 ]
 
