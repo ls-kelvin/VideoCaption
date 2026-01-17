@@ -1,0 +1,2 @@
+[console_scripts]
+video-pipeline-run = video_pipeline.cli.launch:main
