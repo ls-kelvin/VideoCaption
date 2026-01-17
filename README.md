@@ -7,13 +7,38 @@ A modular pipeline for:
 - Multi-process GPU inference
 - Streaming JSONL output with resume/restart
 
-## Install
+## Environment Setup
 
-Recommended (editable install):
+### 1. Create Conda Environment
+
+We recommend using Conda to manage the environment. The project requires Python 3.10+.
 
 ```bash
-# ensure your torch + vllm are installed properly for your CUDA
+conda create -n video_caption python=3.10 -y
+conda activate video_caption
+```
+
+### 2. Install Dependencies
+
+Install the package in editable mode along with required libraries.
+
+```bash
+# Install Pytorch (ensure it matches your CUDA version, e.g., CUDA 12.1)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Core dependencies (vLLM, Transformers, Qwen-VL-Utils, etc.)
 pip install -e .
+
+# Additional requirements for data preparation & specific model visualizations
+pip install imageio-ffmpeg matplotlib
+```
+
+### 3. Optional Optimization
+
+For better performance with Qwen2-VL in vLLM (resolves JIT torch c dlpack warnings):
+
+```bash
+pip install torch-c-dlpack-ext
 ````
 
 ## Input Format
