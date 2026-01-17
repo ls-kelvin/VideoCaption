@@ -12,13 +12,15 @@ The pipeline operates in two main stages to ensure detailed and context-aware ca
 ## Quick Start
 
 We provide a one-click shell script to run the entire pipeline (Data Prep -> Inference -> Merge).
+**Note**: Please check GPU availability with `nvidia-smi` before running, as vLLM requires significant VRAM.
 
 ```bash
 # Run with default settings (Uses all available GPUs)
-./run_pipeline.sh
+bash run_pipeline.sh
 
-# Run on specific GPUs (e.g., GPUs 5, 6, and 7)
-GPUS=5,6,7 ./run_pipeline.sh
+# Run on specific GPUs (e.g., GPUs 0, 1, 2, 3)
+# Recommended to specify free GPUs to avoid OOM errors
+GPUS=0,1,2,3 bash run_pipeline.sh
 ```
 
 ## Installation
