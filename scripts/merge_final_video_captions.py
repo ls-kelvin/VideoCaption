@@ -5,26 +5,34 @@ from collections import defaultdict
 
 def merge_captions():
     # File paths
-    scene_result_file = "agirobot_scenes_result.jsonl"
+    # Support both single merged file or rank-based files for scenes
+    scene_result_pattern = "agirobot_scenes_result.rank*.jsonl"
+    scene_result_single = "agirobot_scenes_result.jsonl"
     action_result_files = glob.glob("agirobot_actions_result.rank*.jsonl")
     output_file = "agirobot_final_captions.jsonl"
 
-    if not os.path.exists(scene_result_file):
-        print(f"Error: {scene_result_file} not found.")
+    scene_files = glob.glob(scene_result_pattern)
+    if not scene_files and os.path.exists(scene_result_single):
+        scene_files = [scene_result_single]
+    
+    if not scene_files:
+        print(f"Error: No scene result files found (checked {scene_result_pattern} and {scene_result_single}).")
         return
 
     # Data structures
     scenes = {}
     actions = defaultdict(list)
 
-    print(f"Loading scenes from {scene_result_file}...")
-    with open(scene_result_file, 'r', encoding='utf-8') as f:
-        for line in f:
-            if not line.strip(): continue
-            data = json.loads(line)
-            meta = data['input']['meta']
-            key = (str(meta['task_id']), str(meta['ep_id']))
-            scenes[key] = data
+    print(f"Loading scenes from {len(scene_files)} file(s)...")
+    for s_file in scene_files:
+        print(f"  Reading {s_file}...")
+        with open(s_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                if not line.strip(): continue
+                data = json.loads(line)
+                meta = data['input']['meta']
+                key = (str(meta['task_id']), str(meta['ep_id']))
+                scenes[key] = data
 
     print(f"Found {len(scenes)} scenes.")
 

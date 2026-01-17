@@ -40,6 +40,18 @@ echo "[Step 5/5] Merging Final Captions..."
 # 聚合所有结果到 output jsonl
 python scripts/merge_final_video_captions.py
 
+cleanup_files() {
+    echo "[Cleanup] Removing intermediate JSONL files..."
+    rm -f agirobot_actions.jsonl
+    rm -f agirobot_actions_result.rank*.jsonl
+    rm -f agirobot_scenes.jsonl
+    rm -f agirobot_scenes_merged.jsonl
+    rm -f agirobot_scenes_result.rank*.jsonl
+    # agirobot_scenes_result.jsonl is a legacy file
+    rm -f agirobot_scenes_result.jsonl
+}
+cleanup_files
+
 echo "=================================================="
 echo "Pipeline Completed Successfully!"
 echo "Final Output: agirobot_final_captions.jsonl"
