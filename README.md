@@ -153,3 +153,87 @@ A dataset item should return:
   }
 }
 ```
+
+# AgiRobot Captioning Workflow
+
+This project includes a specialized pipeline for generating hierarchical captions (Action + Scene) for AgiRobot video data.
+
+## Pipeline Overview
+
+1.  **Data Preparation**: Scans raw data, speeds up videos (3x), extracts action clips, and generates input JSONL files.
+2.  **Stage 1 - Action Captioning**: Generates detailed descriptions for each action clip (`agirobot_action`).
+3.  **Context Injection**: Merges generated action descriptions into the metadata for the scene captioning task.
+4.  **Stage 2 - Scene Captioning**: Generates a detailed initial scene description, conditioned on the full list of actions (`agirobot_scene`).
+5.  **Final Merge**: Consolidates all results into a single structured JSONL file.
+
+## Step-by-Step Instructions
+
+### 0. Environment Setup
+
+Ensure you have the `wm_dataset` environment active or dependencies installed.
+
+```bash
+conda activate wm_dataset
+```
+
+### 1. Data Preparation
+
+Scans the directories defined in `scripts/prepare_agirobot_data.py`, processes videos (ffmpeg), and generates:
+- `agirobot_actions.jsonl`: Inputs for Stage 1.
+- `agirobot_scenes.jsonl`: Inputs for Stage 2 (Draft).
+
+```bash
+python scripts/prepare_agirobot_data.py
+```
+
+### 2. Stage 1: Action Captioning
+
+Run the inference pipeline to describe every individual action clip using Qwen2-VL.
+
+```bash
+python -m video_pipeline.cli.launch \
+    --config configs/agirobot_action.yaml \
+    --gpu-ids 0,1,2,3,4,5,6,7  # Adjust GPU IDs as needed
+```
+
+**Output**: `agirobot_actions_result.rank*.jsonl`
+
+### 3. Context Merge
+
+Injects the generated action descriptions from Stage 1 into the input file for Stage 2. This allows the scene captioner to know exactly what actions happen in the video.
+
+```bash
+# This script reads agirobot_actions_result.rank*.jsonl and updates agirobot_scenes_merged.jsonl
+python scripts/merge_action_to_scene.py
+```
+
+### 4. Stage 2: Scene Captioning
+
+Run the inference pipeline to generate the global scene description.
+
+```bash
+python -m video_pipeline.cli.launch \
+    --config configs/agirobot_scene.yaml \
+    --gpu-ids 0,1,2,3,4,5,6,7  # Adjust GPU IDs as needed
+```
+
+**Output**: `agirobot_scenes_result.rank*.jsonl`
+
+### 5. Final Result Merge
+
+Consolidates the split result files and the action descriptions into a final, clean JSONL format.
+
+```bash
+# First, merge scene results into a single file
+cat agirobot_scenes_result.rank*.jsonl > agirobot_scenes_result.jsonl
+
+# Run final unification script
+python scripts/merge_final_video_captions.py
+```
+
+**Final Output**: `agirobot_final_captions.jsonl`
+
+## Configuration Files
+
+*   `configs/agirobot_action.yaml`: Configures the prompt and model for short-duration action clips.
+*   `configs/agirobot_scene.yaml`: Configures the prompt and model for the full scene video, utilizing text context.
