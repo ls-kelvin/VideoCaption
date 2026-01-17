@@ -1,0 +1,36 @@
+data:
+  input_jsonl: agirobot_scenes_merged.jsonl
+  video_field: path
+  id_field: null
+  output_jsonl: agirobot_scenes_result.jsonl
+  resume: true
+  num_workers: 4
+  shard_id: 0
+
+vision:
+  min_pixels: 301056       # 场景描述需要清晰度 (比如 768*392)
+  fps: 1.0                 # 场景主要看静态和整体动态，帧率可以低一点
+
+vllm:
+  model: /data/flg/models/Qwen2-VL-7B-Instruct
+  dtype: bfloat16
+  max_model_len: 32768
+  gpu_memory_utilization: 0.5
+  enforce_eager: false
+  tensor_parallel_size: 1
+  limit_mm_per_prompt:
+    video: 1
+
+sampling:
+  temperature: 0.1
+  top_p: 0.9
+  max_tokens: 2048   # 场景描述较长
+  repetition_penalty: 1.0
+
+run:
+  task: agirobot_scene
+  batch_size: 4
+  log_every: 10
+  flush_every: 100
+
+task_params: {}
