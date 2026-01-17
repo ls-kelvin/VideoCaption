@@ -15,7 +15,7 @@ vllm:
   model: /data/flg/models/Qwen2-VL-7B-Instruct
   dtype: bfloat16
   max_model_len: 32768
-  gpu_memory_utilization: 0.9
+  gpu_memory_utilization: 0.5
   enforce_eager: false
   tensor_parallel_size: 1
   limit_mm_per_prompt:

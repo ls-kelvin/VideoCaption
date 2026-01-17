@@ -7,35 +7,86 @@ from .registry import register_task
 # -------------------------- 移植的 Prompt 模板 --------------------------
 
 ACTION_PROMPT_TEMPLATE = """
-请详细分析视频片段，基于原始标注：{raw_text}，禁止使用括号，严格按照以下要求进行机器人动作的结构化描述：
-1. 时序逻辑清晰化：采用 First... Then... Next... Meanwhile... Finally... 等过渡连词，将动作拆解为符合物理逻辑的分步流程，明确动作发生的先后顺序与因果关联。
-2. 动作细节具象化：避免抽象词汇，将动作转化为可视觉化的具体细节，句式严格遵循“主体+核心动作+辅助动作/姿态+接触部位”的结构，例如“机器人机械臂先缓慢抬起，随后前臂轻微弯曲，末端夹具精准夹持前景中的零件”。
-3. 空间方位精准化：使用 Left/Right side of the frame、画面左侧/右侧、Top/Bottom、顶部/底部、Center、中心、Foreground/Background、前景/背景、Relative to [object]等方位术语，明确动作发生的空间位置及主体与周边物体的相对关系。
-4. 多主体区分明确化：若画面存在多个机器人或物体，通过颜色，如灰色工业机器人、蓝色协作机器人、形态特征，如带旋转云台的机器人、多关节机械臂机器人、空间位置等组合属性进行唯一区分，避免主体混淆。
-5. 量化描述相对化：不使用具体的距离、角度、速度数值，改用相对描述，如 轻微、缓慢、适度、大幅、平稳、匀速 等，确保描述的客观性与通用性。
-6. 动作连贯性保障：确保各动作步骤之间衔接自然，符合机器人运动的机械原理，避免出现关节运动异常、动作断层等逻辑矛盾。
-7. 禁止使用括号：全程禁止使用任何形式的括号，包括小括号（）、圆括号等所有括号类符号，所有补充说明内容均直接融入语句，不得通过括号标注。如：First，“画面左侧的左臂机械臂（末端带黑色夹具）缓慢移动”应该为“画面左侧的末端带黑色夹具的左臂机械臂”。
-要求：描述语言专业流畅，聚焦机器人动作本身，以视频生成prompt的语境进行叙述，而非仅仅对场景进行描述，字数不少于100字，仅输出动作描述文本，无需额外解释。
+# Role
+You are an expert **Robotic Kinematics Analyst** and **Physics Engine Describer**. Your task is to analyze the input [Video Clip] and reference the [Raw Action Text] to generate a **high-fidelity, physically accurate, and visually grounded** motion narrative.
+
+# Input
+- Video Clip: [Video Frames]
+- Raw Action Text: {raw_text} (Use with caution; visual data takes precedence)
+
+# Principles of Enrichment (Strict Guidelines)
+
+1.  **Visual Ground Truth (Highest Priority)**:
+    - **Video > Text**: You must strictly adhere to the visual evidence in the video. If the text claims the gripper is "red" but the video shows "black," you must describe it as black.
+    - **Correction**: Correct any discrepancies regarding object shapes, colors, or positions found in the raw text.
+    - **Micro-Details**: Capture visual details missing from the text, such as dangling cables, blinking status lights, or slight mechanical jitters.
+
+2.  **Kinematic Texture & Velocity**:
+    - **Speed Curves**: Reject robotic, linear descriptions. Describe the **velocity profile**: *smooth acceleration*, *consistent cruising speed*, or *precise deceleration upon approach*.
+    - **Mechanical Feel**: Articulate the nature of the movement—is it *fluid and hydraulic*, or *rigid and stepper-motor driven*? Mention inertia, such as the arm swaying slightly when stopping abruptly.
+
+3.  **Physics & Interaction**:
+    - **The Moment of Contact**: Zoom in on the interaction. Describe the friction, the compression of the gripper against the object, or any slight displacement of the object before it is fully lifted.
+    - **Weight Perception**: Convey the object's mass by describing how the arm reacts (e.g., a momentary lag or increased motor effort when hoisting).
+
+4.  **Lighting & Environmental Response**:
+    - Describe how the robot's movement alters the scene: casting moving shadows across the workspace, or how specular highlights shift across its metallic surfaces during rotation.
+
+5.  **Formatting & Flow**:
+    - **NO Parentheses**: Integrate all specifications into fluid sentences (e.g., "the silver arm equipped with a vacuum gripper").
+    - **Fluid Narrative**: Use transitional phrasing like *"Simultaneous with the base rotation..."*, *"In coordination with..."*, or *"Leading seamlessly into..."*.
+    - **Length**: Minimum 150 words.
+
+# Output
+- Output ONLY the descriptive paragraph. Focus entirely on the **mechanics, flow, and physical reality** of the action.
+
+Let's analyze the motion dynamics step by step:
 """
 
 SCENE_PROMPT_TEMPLATE = """
-请结合视频首帧图像、原始初始场景描述：{raw_text}，以及第一个动作的标注信息：{first_action_text}，禁止使用括号，严格按照以下要求生成适配第一个动作对应视频的完整生成prompt：
-1. 充分利用原始场景描述：若原始场景描述中有明确的物品名称，则不要在描述中出现模糊性叙述，而应替换成相应的准确物品名称，如“鱼油”而非“瓶装液体”。
-2. 空间布局体系化：以“整体场景定位→前景元素分布→中景元素分布→背景元素分布”的逻辑展开，使用 Left/Right side of the frame（画面左侧/右侧）、Top/Bottom（顶部/底部）、Center（中心）、Foreground/Background（前景/背景）、Adjacent to（相邻）、Symmetrically distributed（对称分布）等方位术语，清晰呈现所有物体的空间排布关系。
-3. 多对象区分精准化：若存在多个机器人或物体，通过“颜色属性（如银色金属框架、黄色警示标识）、形态特征（如圆柱形工件、方形操作台）、功能标识（如带有‘抓取区’字样的平台）、空间位置”的组合维度进行区分，明确标注各对象之间的相对位置（如“前景中心的协作机器人右侧，相邻放置着若干中等大小的圆柱形工件”）。
-4. 视觉细节客观化：避免抽象词汇，将场景元素转化为具体视觉细节，句式遵循“主体+空间位置+形态特征+表面状态/纹理”的结构，例如“画面背景右侧的金属操作台，表面带有细微划痕，边缘设有黑色防护栏”。
-5. 镜头视角与朝向明确化：明确标注镜头的位置与视角类型，包括俯视平视仰视侧视等视角表述，清晰说明镜头与核心物体的位置关系，例如镜头正对前景中心的协作机器人镜头从画面右侧斜向拍摄中景的工件摆放区等，同时精准描述各物体的朝向特征，例如机器人机械臂朝向画面下方的工件台圆柱形工件轴向平行于画面横向金属操作台台面朝向镜头等。
-6. 量化描述模糊化：不描述具体的尺寸、重量、精确数量数值，改用相对描述（如 若干、少数、中等大小、大型、小型、平整、粗糙 等）。
-7. 动作场景融合化：将第一个动作的核心逻辑、时序流程、主体动作特征自然融入场景描述中，明确动作发生的起始状态、主体位置、动作轨迹与场景元素的交互关系，确保生成的prompt能精准匹配第一个动作对应视频的视觉呈现需求。
-8. 场景用途推理合理化：基于场景布局、物体特征（如工件类型、机器人功能、操作平台结构）和第一个动作的特征，推测场景的具体工业用途（如 零件装配区、工件分拣区、设备调试区 等），推理过程需隐含在场景描述中，不单独罗列。
-9. 环境氛围补充：简要描述场景的环境特征（如 室内工业厂房、光线均匀、无明显杂物 等），增强场景描述的完整性，同时匹配动作发生的环境氛围。
-10. 格式严格合规：全程禁止使用任何形式的括号，包括小括号、圆括号等所有括号类符号，所有补充说明内容均直接融入语句，不得通过括号标注。
-要求：描述语言专业流畅，逻辑层次清晰，既包含完整的场景信息，又精准适配第一个动作的视频生成需求，字数不少于200字，仅输出视频生成prompt形式的描述文本，无需额外解释。
+# Role
+You are a Hollywood-level **Virtual Set Designer** and **Director of Photography (DoP)**. Your objective is to synthesize the [First Frame], [Raw Scene Text], and [First Action Instruction] into a **spatially precise, atmospherically rich** video generation prompt.
+
+# Input
+- First Frame: [First Frame Image]
+- Raw Scene Text: {raw_text}
+- First Action Instruction: {first_action_text}
+
+# Principles of Enrichment (Strict Guidelines)
+
+1.  **Cinematic Camera & Atmosphere**:
+    - **Shot Definition**: Explicitly define the camera angle (e.g., High-angle wide shot, Eye-level close-up) and the depth of field (e.g., sharp focus on the foreground, bokeh-blurred background).
+    - **Lighting Logic**: Describe the lighting source and quality (e.g., "diffused cool-tone industrial overhead lighting" or "harsh directional shadows"). Describe how light interacts with materials (glossy reflections vs. matte surfaces).
+
+2.  **Layered Spatial Mapping**:
+    - **Hierarchy**: Systematically build the scene from **Background** to **Midground** to **Foreground**.
+    - **Anchoring**: Use precise terms like *Left/Right, Adjacent to, Centered, Perpendicular to*.
+    - **Object Specificity**: Use specific nouns from the First Action Text (e.g., replace "bottle" with "hydrating toner bottle") to resolve any ambiguity in the scene description.
+
+3.  **High-Fidelity Subject Definition**:
+    - **Visual Correction**: If the Raw Text says "Red Gripper" but the First Frame shows "Black," you must describe it as "Black."
+    - **The "Idle" State**: Describe the robot's posture just before movement—its potential energy (e.g., "poised in a ready state," "hovering statically").
+
+4.  **The "Break of Static" (Action Initiation)**:
+    - After establishing the static scene, dedicate the final sentences to the **exact moment movement begins**.
+    - **Trigger**: Describe the initial break from stillness (e.g., "the servo motors engage, and the arm begins a slow, calculated extension trajectory towards the shelf").
+    - Do not describe the completed action, only the **onset**.
+
+5.  **Formatting & Flow**:
+    - **NO Parentheses**: All details must be woven into the narrative structure.
+    - **Visual Factuality**: Avoid abstract inference (e.g., do not guess "this is a sorting zone"). Describe the visible layout (e.g., "a workbench lined with cylindrical components").
+    - **Length**: Minimum 200 words.
+
+# Output
+- A single, dense, and visually evocative paragraph. It should read like the opening script for a high-end documentary, establishing the scene and transitioning smoothly into the first second of motion.
+
+Let's construct the scene and trigger the first movement:
 """
 
 @register_task
 class AgiRobotActionTask(Task):
     name = "agirobot_action"
+    dataset_name = "qwen_video"
 
     def build_messages(self, sample: Dict[str, Any]) -> List[Dict[str, Any]]:
         # sample 会包含: {"path": "segment.mp4", "raw_text": "原始动作描述"}
@@ -59,6 +110,7 @@ class AgiRobotActionTask(Task):
 @register_task
 class AgiRobotSceneTask(Task):
     name = "agirobot_scene"
+    dataset_name = "qwen_image"
 
     def build_messages(self, sample: Dict[str, Any]) -> List[Dict[str, Any]]:
         # sample 会包含: {"path": "speedup_video_frame.jpg" (或者 mp4), "raw_text": "场景描述", "first_action_text": "..."}
@@ -74,11 +126,9 @@ class AgiRobotSceneTask(Task):
         
         msg_content = [{"type": "text", "text": prompt}]
         
-        # 判断是视频还是图片（Dataset层处理）
-        if sample.get("is_image", False):
-             msg_content.append({"type": "image", "image": sample["__video_uri"]})
-        else:
-             msg_content.append({"type": "video", "video": sample["__video_uri"]})
+        # Dataset 必然是 qwen_image (或兼容 image 的 dataset)
+        # sample["__video_uri"] 指向的是单帧图片
+        msg_content.append({"type": "image", "image": sample["__video_uri"]})
 
         return [
             {"role": "system", "content": "You are a helpful assistant."},

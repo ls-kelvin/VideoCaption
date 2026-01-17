@@ -28,6 +28,25 @@ DEFAULT_VIDEO_FPS = 30
 
 FFMPEG_EXE = mpg.get_ffmpeg_exe()
 
+def extract_first_frame(video_path, save_path):
+    if os.path.exists(save_path) and os.path.getsize(save_path) > 1024:
+        # 已存在，跳过
+        return save_path
+
+    Path(os.path.dirname(save_path)).mkdir(parents=True, exist_ok=True)
+    try:
+        subprocess.run(
+            [FFMPEG_EXE, "-y", "-i", str(video_path),
+             "-vframes", "1", "-q:v", "2",
+             save_path],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=FFMPEG_TIMEOUT
+        )
+        return save_path
+    except Exception as e:
+        print(f"Error extracting frame {video_path}: {e}")
+        if os.path.exists(save_path): os.unlink(save_path)
+        return None
+
 def get_video_fps(video_path):
     try:
         result = subprocess.check_output(
@@ -165,24 +184,20 @@ def process_single_video(video_path, task_map, speed_root, action_writer, scene_
 
 
     # 3. Process Scene
-    # 注意：Scene 需要第一个动作的详细描述。如果是 Two-Stage 流程，这里只能先生成“待填”的 Jsonl
-    # 或者我们使用原始的 action_text 作为暂替代，或者假设后续有脚本合并
-    # 这里我们生成 Scene JSONL，注意它依赖 first_action_text。
-    # 我们可以把 Speedup Video 作为输入
-    
-    # 由于 vLLM 需要 paths，我们直接指向 Speedup Video
-    # 注意：prompt 需要 first_action_text。在推理时，如果是 Pipeline，可能需要先跑完 Action 再跑 Scene
-    # 为了简化，我们假设 Scene Task 能够接受 "raw_first_action_text" 作为 fallback
-    
+    # 提取首帧图片用于 Scene Caption
+    scene_image_path = speed_path.replace(".mp4", "_first_frame.jpg")
+    extract_first_frame(speed_path, scene_image_path)
+
     scene_sample = {
-        "path": str(speed_path),
+        "path": str(scene_image_path),
         "raw_text": ep_data.get("init_scene_text", ""),
         "first_action_text": processed_actions_for_scene[0] if processed_actions_for_scene else "",
+        "is_image": True,
         "meta": {
             "type": "scene",
             "task_id": task_id,
             "ep_id": ep_id,
-            "is_image": False  # 模型支持纯视频输入
+            "is_image": True  # 标记为图片输入
         }
     }
     with file_lock:
@@ -191,6 +206,10 @@ def process_single_video(video_path, task_map, speed_root, action_writer, scene_
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Prepare data for AgiRobot Video Captioning")
+    parser.add_argument("--num-workers", type=int, default=8, help="Number of parallel workers for FFmpeg processing")
+    args = parser.parse_args()
+
     if not os.path.exists(VIDEO_ROOT_DIR):
         print("Video root dir not found")
         return
@@ -209,15 +228,14 @@ def main():
             if os.path.exists(v_path):
                 video_list.append(Path(v_path))
     
-    print(f"Found {len(video_list)} videos.")
+    print(f"Found {len(video_list)} videos. Using {args.num_workers} parallel workers.")
     
     # 打开输出文件
     with open("agirobot_actions.jsonl", "w", encoding="utf-8") as fa, \
          open("agirobot_scenes.jsonl", "w", encoding="utf-8") as fs:
         
         # 使用 ThreadPool 并行处理 ffmpeg (CPU/IO Bound)
-        # 注意不要太大以免卡死
-        with ThreadPoolExecutor(max_workers=8) as executor:
+        with ThreadPoolExecutor(max_workers=args.num_workers) as executor:
             list(tqdm(executor.map(lambda v: process_single_video(v, task_map, SPEED_VIDEO_ROOT_DIR, fa, fs), video_list), total=len(video_list)))
 
     print("Done. Created agirobot_actions.jsonl and agirobot_scenes.jsonl")
