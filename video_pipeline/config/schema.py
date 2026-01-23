@@ -22,6 +22,7 @@ class DataConfig:
 class VisionConfig:
     # 这些字段会进入 messages 的 video dict 中（Qwen2.5-VL 常用）
     total_pixels: int = 20480 * 28 * 28
+    max_pixels: int = 768 * 28 * 28
     min_pixels: int = 16 * 28 * 28
     fps: Optional[float] = None  # qwen-vl-utils 是否支持显式fps取决于版本；不强依赖
 

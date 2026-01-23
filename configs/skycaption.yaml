@@ -1,0 +1,40 @@
+data:
+  input_jsonl: /root/workspace/zzt/VideoFilter/skycaptioner_v1/OpenVidHD_filter.jsonl
+  video_field: path
+  id_field: null
+  output_jsonl: output/OpenVidHD-170k.jsonl
+  resume: true
+  num_workers: 8
+  shard_id: 0
+
+vision:
+  # total_pixels: 16056320   # 20480*28*28
+  max_pixels: 60000
+  min_pixels: 12544        # 16*28*28
+  fps: 2.0
+
+vllm:
+  model: /root/workspace/zzt/VideoFilter/skycaptioner_v1/ckpt/SkyCaptioner-V1
+  dtype: bfloat16
+  max_model_len: 16384
+  gpu_memory_utilization: 0.9
+  enforce_eager: false
+  tensor_parallel_size: 1
+  limit_mm_per_prompt:
+    video: 1
+  trust_remote_code: true
+
+sampling:
+  temperature: 0.1
+  top_p: 0.9
+  max_tokens: 2048
+  repetition_penalty: 1.0
+
+run:
+  task: skycaption
+  batch_size: 8
+  log_every: 20
+  flush_every: 10
+  fsync_every: 10
+
+task_params: {}

@@ -41,11 +41,7 @@ Output will be sharded automatically by rank:
 * `output.describe.rank1.jsonl`
 * ...
 
-Merge:
-
-```bash
-cat /path/to/output.describe.rank*.jsonl > /path/to/output.describe.all.jsonl
-```
+**Automatic consolidation:** After the pipeline completes, all rank-sharded JSONL files are automatically consolidated into a single output file (e.g., `output.describe.jsonl`). The individual rank files are removed by default after successful consolidation.
 
 ## Resume / Restart
 

@@ -70,6 +70,13 @@ def main():
     finally:
         q.put("__STOP__")
         t.join(timeout=5)
+    
+    # Consolidate rank-sharded JSONL files
+    from ..io.jsonl_consolidator import consolidate_jsonl
+    try:
+        consolidate_jsonl(cfg.data.output_jsonl, world_size=world_size, keep_rank_files=False)
+    except Exception as e:
+        print(f"⚠️  JSONL consolidation failed: {e}")
 
 
 if __name__ == "__main__":

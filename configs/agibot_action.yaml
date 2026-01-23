@@ -1,0 +1,37 @@
+data:
+  input_jsonl: agibot-alpha-2.jsonl
+  video_field: path
+  id_field: null
+  output_jsonl: output/agirobot_actions_result.jsonl
+  resume: true
+  num_workers: 8  # 预处理过的视频可以直接读，多开点worker
+  shard_id: 0
+
+vision:
+  # 动作片段通常较短，分辨率保持默认即可
+  min_pixels: 12544        # 16*28*28
+  fps: 1.0                 # 动作识别建议较高帧率，或者根据模型需求调整
+
+vllm:
+  model: /root/workspace/zzt/VideoFilter/skycaptioner_v1/ckpt/Qwen3-VL-30B-A3B-Instruct
+  dtype: bfloat16
+  max_model_len: 32768
+  gpu_memory_utilization: 0.9
+  enforce_eager: false
+  tensor_parallel_size: 1
+  limit_mm_per_prompt:
+    video: 1
+
+sampling:
+  temperature: 0.2
+  top_p: 0.9
+  max_tokens: 2560
+  repetition_penalty: 1.0
+
+run:
+  task: agibot_action
+  batch_size: 4
+  log_every: 10
+  flush_every: 10
+
+task_params: {}

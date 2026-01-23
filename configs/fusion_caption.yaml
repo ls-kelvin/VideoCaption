@@ -1,0 +1,41 @@
+data:
+  # upstream jsonl (e.g. output of skycaption)
+  input_jsonl: output/OpenVidHD-170k.jsonl
+  video_field: path
+  id_field: null
+  output_jsonl: output/OpenVidHD-170k-fusion.jsonl
+  resume: true
+  num_workers: 4
+  shard_id: 0
+
+vision: {}
+
+vllm:
+  # text/chat model used to "fuse" structured JSON into fluent caption
+  model: /root/workspace/zzt/VideoFilter/skycaptioner_v1/ckpt/Qwen2.5-32B-Instruct
+  dtype: bfloat16
+  max_model_len: 4096
+  gpu_memory_utilization: 0.9
+  enforce_eager: false
+  tensor_parallel_size: 1
+  limit_mm_per_prompt: {}
+  trust_remote_code: true
+
+sampling:
+  temperature: 0.1
+  top_p: 0.9
+  max_tokens: 512
+  repetition_penalty: 1.0
+
+run:
+  task: fusion_caption
+  batch_size: 4
+  log_every: 20
+  flush_every: 10
+  fsync_every: 10
+
+task_params:
+  # aligns with your vllm_client_fusion_caption.py usage
+  mode: t2v
+  input_field: caption
+  original_text: "-"

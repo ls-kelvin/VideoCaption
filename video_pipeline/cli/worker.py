@@ -56,6 +56,8 @@ def worker_main(
         logging.getLogger("vllm.worker").setLevel(logging.ERROR)
 
         task = get_task(cfg.run.task)
+        # inject task_params into task instance for tasks that need it
+        setattr(task, "task_params", cfg.task_params or {})
         DatasetCls = get_dataset_cls(task.dataset_name)
 
         # shard by line_idx % world_size
