@@ -7,68 +7,43 @@ from .registry import register_task
 # -------------------------- 多段动作描述 Prompt 模板 --------------------------
 MULTI_ACTION_PROMPT_TEMPLATE = """
 # Role
-You are a detailed Video Narrator. Your task is to generate descriptive narratives for the provided video segments based on the visual evidence.
+You are an expert video captioning assistant for generative text-to-video (T2V) models.
 
-# Input
-Full Video: [Video]
-Input Text Segments:
+# Task
+Analyze the provided video frames and the input JSON (containing an initial scene description and segmented action labels). Convert each segment's simple action label into a highly descriptive, renderable T2V prompt.
+
+# Constraints & Requirements
+1.  **Visual Specificity:** Clearly identify the **Agent** (who) and **Object** (what). Describe the **Action's process** and its **visible effect**.
+2.  **Environment & Camera:** Describe any background changes, lighting shifts, or specific camera movements (e.g., "slow zoom in," "tracking shot"). If the camera is still, specify "static shot."
+3.  **Renderability:** Use only concrete, objective visual descriptions. Avoid abstract concepts, subjective feelings, or meta-commentary (e.g., do not say "a touching moment").
+4.  **Length:** Each segment prompt must be between **20 and 80 words**.
+
+# Input Format
+- **Initial Scene:** 
+{init_scene}
+
+- **Segments:** 
 {action_segments_with_indices}
 
-# Narrative Guidelines
-
-1. Subject and Action
-Start strictly with the main subject, such as the robotic arm or the gripper. Describe the action in the third person, focusing on the movement trajectory, speed changes, and the specific interaction with objects. Use natural language to convey the smoothness or weight of the motion.
-
-2. Scene and Environment
-Weave the environmental context into the narrative. Describe the surface texture, lighting conditions, shadows, or obstacles that surround the subject. Explain how the subject is positioned spatially relative to other items in the scene.
-
-3. Visual Accuracy
-Treat the video as the primary source of truth. If the input text conflicts with the video regarding colors, shapes, or object types, describe exactly what is visible in the pixel data to ensure the narrative is grounded in reality.
-
-4. Cinematic Perspective
-Conclude the description by identifying the visual style. Mention the shot type, such as a close-up or high-angle view, and describe any camera movements, like tracking, panning, or remaining static, that frame the action.
-
-# Output Rules
-Output a numbered list matching the input segments.
-Each description must be longer than 30 words.
-Do not use any parentheses.
-Do not include any other text or headers.
-
 # Output Format
-1. [Narrative description for segment 1]
-2. [Narrative description for segment 2]
-...
-{num_segments}. [Narrative description for segment {num_segments}]
-"""
+Return a JSON object where keys are the segment timestamps and values are the expanded prompts.
+
+# Example Output
+1. Prompt1
+2. ...
+""".strip()
 
 SCENE_PROMPT_TEMPLATE = """
-# Role
-You are an expert Image Generation Prompt Specialist. Your objective is to synthesize the [First Frame] and [Raw Scene Text] into a precise text-to-image generation prompt.
+You are an expert prompt engineer. Analyze the provided image and generate a detailed text-to-image prompt.
 
-# Input
-- First Frame: [First Frame Image]
-- Raw Scene Text: {raw_text}
+Your response must adhere to the following strict guidelines:
 
-# Directives
-
-1.  **Generative Visual Grounding**
-    Construct a description that serves as a standalone instruction for an image synthesis model. Focus exclusively on concrete visual attributes, ensuring every noun and adjective contributes directly to constructing the visual composition.
-
-2.  **Spatial Topology and Layout**
-    Establish a clear physical structure for the scene. Describe the arrangement of objects from background to foreground and define the relative positioning of the main subject within the environment. Ensure the spatial relationships are logically mapped out to guide the generation of a cohesive space.
-
-3.  **Atmospheric and Material Realism**
-    Articulate the lighting quality and material properties with factual precision. Describe the source of light, the nature of shadows, and the specific textures and colors of surfaces visible in the frame.
-
-4.  **Grounded Natural Language**
-    Use plain, high-density English. Avoid dramatic flair, exaggerated artistic terms, or emotional embellishments. The tone must remain objective, acting as a clear set of visual specifications.
-
-# Output Format
-- A single, continuous paragraph containing only the descriptive prompt.
-- Minimum 100 words.
-
-Let's write the generation prompt:
-"""
+1. **Composition & Attributes**: Mention every visible object and define their exact spatial relationships. Specify distinct physical attributes for all elements, including specific colors, textures, materials, and postures if it's unique.
+2. **Technical Settings**: Explicitly state the camera viewpoint (e.g., aerial, eye-level, macro).
+3. **Renderability**: Use only concrete, visual descriptors. Strictly avoid abstract concepts, emotional interpretations, subjective adjectives, or meta-commentary.
+4. **Style**: Write in a cohesive, narrative natural language format using full sentences of moderate length (no more than 25 words each) rather than listing.
+5. **Length:** The output must be between 80 and 250 words.
+""".strip()
 
 @register_task
 class AgiRobotActionTask(Task):
@@ -90,8 +65,7 @@ class AgiRobotActionTask(Task):
             )
         
         prompt = MULTI_ACTION_PROMPT_TEMPLATE.format(
-            action_segments_with_indices="\n".join(segments_text),
-            num_segments=len(action_config)
+            action_segments_with_indices="\n".join(segments_text)
         )
 
         return [
@@ -152,18 +126,16 @@ class AgiRobotSceneTask(Task):
         
         raw_text = sample.get("raw_text", "No description")
         
-        prompt = SCENE_PROMPT_TEMPLATE.format(
-            raw_text=raw_text
-        )
+        prompt = "Please output the result as a single, continuous paragraph **without any semicolons**."
         
         msg_content = [{"type": "text", "text": prompt}]
         
         # Dataset 必然是 qwen_image (或兼容 image 的 dataset)
         # sample["__video_uri"] 指向的是单帧图片
-        msg_content.append({"type": "image", "image": sample["__image_pil"]})
+        msg_content.insert(0, {"type": "image", "image": sample["__image_pil"]})
 
         return [
-            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "system", "content": SCENE_PROMPT_TEMPLATE},
             {"role": "user", "content": msg_content},
         ]
 

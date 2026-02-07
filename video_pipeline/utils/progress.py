@@ -13,13 +13,14 @@ class ProgressMonitor:
     total: int
     desc: str = "Done"
     unit: str = "video"
+    initial: int = 0
 
     def run(self, q, stop_token: str = "__STOP__") -> None:
         """
         q: multiprocessing.Queue
         """
-        pbar = tqdm(total=self.total, desc=self.desc, unit=self.unit, dynamic_ncols=True)
-        done = 0
+        pbar = tqdm(total=self.total, desc=self.desc, unit=self.unit, dynamic_ncols=True, initial=self.initial)
+        done = self.initial
         try:
             while True:
                 msg = q.get()

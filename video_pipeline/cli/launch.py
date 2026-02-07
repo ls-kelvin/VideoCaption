@@ -10,6 +10,7 @@ from ..config.loader import load_config
 from ..utils.mp import find_free_port, make_gpu_groups, parse_visible_gpu_ids, spawn
 from ..utils.progress import ProgressMonitor
 from ..data.jsonl_reader import iter_jsonl
+from ..io.resume import load_done_keys
 
 
 def _parse_gpu_ids(s: Optional[str]) -> Optional[List[int]]:
@@ -38,13 +39,26 @@ def main():
 
     # total videos (all samples)
     total = sum(1 for _ in iter_jsonl(cfg.data.input_jsonl))
+    
+    # Calculate already completed count if resume is enabled
+    completed_count = 0
+    if cfg.data.resume:
+        import os
+        out_path = cfg.data.output_jsonl
+        root, ext = os.path.splitext(out_path)
+        
+        # Count completed items across all rank files
+        for rank in range(len(gpu_groups)):
+            rank_out_path = f"{root}.rank{rank}{ext}"
+            done_keys = load_done_keys(rank_out_path)
+            completed_count += len(done_keys)
 
     # Queue for progress updates
     ctx = mp.get_context("spawn")
     q = ctx.Queue(maxsize=10000)
 
     # Progress monitor thread in parent (terminal only shows this)
-    monitor = ProgressMonitor(total=total, desc="Completed", unit="video")
+    monitor = ProgressMonitor(total=total, desc="Completed", unit="video", initial=completed_count)
     t = threading.Thread(target=monitor.run, kwargs=dict(q=q, stop_token="__STOP__"), daemon=True)
     t.start()
 
